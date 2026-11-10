@@ -1,0 +1,9 @@
+{
+  "watchDir": null,
+  "archiveDir": "~/Pictures/ScreenshotButler",
+  "renameTemplate": "Screenshot_{YYYY}{MM}{DD}_{HH}{mm}{ss}",
+  "format": "webp",
+  "quality": 82,
+  "organizeBy": "month",
+  "keepOriginal": true
+}
