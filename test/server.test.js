@@ -1,0 +1,77 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import sharp from 'sharp';
+import { setTimeout as delay } from 'node:timers/promises';
+import { createDashboard } from '../src/server.js';
+
+test('面板 API：来源限制、预览、复制、失效、保存配置', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'snapsort-api-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const config = { watchDir: path.join(root, 'in'), archiveDir: path.join(root, 'out'), keepOriginal: false };
+  await mkdir(config.watchDir);
+  const source = path.join(config.watchDir, 'Screenshot lecture.png');
+  await writeFile(source, 'original');
+  const configFile = path.join(root, 'settings.json');
+  const app = await createDashboard({ initialConfig: config, configFile });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  t.after(() => app.stop());
+  const base = `http://127.0.0.1:${app.server.address().port}`;
+  const post = (route, value = {}, origin = base) => fetch(`${base}/api/${route}`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+  assert.equal((await post('scan', {}, 'https://other.example')).status, 403);
+  assert.equal((await fetch(base)).status, 200);
+  assert.equal((await post('scan')).status, 200);
+  const state = await (await fetch(`${base}/api/state`)).json();
+  assert.equal(state.config.keepOriginal, true);
+  assert.equal(state.plan.entries.length, 1);
+  assert.equal((await post('copy', { id: state.plan.id + 1 })).status, 400);
+  assert.equal((await post('copy', { id: state.plan.id })).status, 200);
+  assert.equal(await readFile(source, 'utf8'), 'original');
+  assert.equal((await post('copy', { id: state.plan.id })).status, 400);
+  assert.equal((await post('config', { config, rules: '学习=lecture' })).status, 200);
+  const saved = JSON.parse(await readFile(configFile, 'utf8'));
+  assert.equal(saved.config.keepOriginal, true);
+  assert.equal(saved.rules, '学习=lecture');
+  const restored = await createDashboard({ configFile });
+  await new Promise(resolve => restored.server.listen(0, '127.0.0.1', resolve));
+  t.after(() => restored.stop());
+  const restoredState = await (await fetch(`http://127.0.0.1:${restored.server.address().port}/api/state`)).json();
+  assert.equal(restoredState.config.archiveDir, config.archiveDir);
+  assert.equal(restoredState.rules, '学习=lecture');
+});
+
+test('面板监听：新图转换、缩略图、原图保留、监听时拒绝改配置与扫描', { timeout: 15000 }, async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'snapsort-live-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const config = { watchDir: path.join(root, 'in'), archiveDir: path.join(root, 'out') };
+  await mkdir(config.watchDir);
+  const app = await createDashboard({ configFile: path.join(root, 'config.json'), initialConfig: config });
+  await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
+  t.after(() => app.stop());
+  const base = `http://127.0.0.1:${app.server.address().port}`;
+  const post = (route, value = {}) => fetch(`${base}/api/${route}`, { method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+  const state = async () => (await fetch(`${base}/api/state`)).json();
+  assert.equal((await post('start')).status, 200);
+  assert.equal((await state()).watching, true);
+  assert.equal((await post('scan')).status, 400);
+  assert.equal((await post('config', { config, rules: '' })).status, 400);
+  const source = path.join(config.watchDir, 'Screenshot live.png');
+  await sharp({ create: { width: 32, height: 24, channels: 3, background: 'green' } }).png().toFile(source);
+  let result;
+  for (let i = 0; i < 80; i++) {
+    const logs = (await state()).logs;
+    result = logs.find(log => log.status === 'success' || log.status === 'error');
+    if (result) break;
+    await delay(100);
+  }
+  assert.equal(result?.status, 'success', JSON.stringify(result));
+  assert.equal((await sharp(result.destination).metadata()).format, 'webp');
+  assert.equal((await sharp(source).metadata()).format, 'png');
+  const thumb = await fetch(`${base}/api/thumbnail?log=${result.id}`);
+  assert.equal(thumb.headers.get('content-type'), 'image/jpeg');
+  assert.equal((await sharp(Buffer.from(await thumb.arrayBuffer())).metadata()).format, 'jpeg');
+  assert.equal((await post('stop')).status, 200);
+  assert.equal((await state()).watching, false);
+});

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SnapSort 截图管家</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body><main>
+<header><div><p class="eyebrow">YOUR DESKTOP, SORTED.</p><h1>SnapSort <span>截图管家</span></h1><p>先预览，再整理。让每一张截图都有去处。</p></div><span id="status" class="badge">正在连接</span></header>
+<p id="notice" role="status" aria-live="polite">正在载入配置…</p>
+<section class="card"><div class="section-title"><h2>整理设置</h2><span>全部操作保留原图 · 仅在本机处理</span></div>
+<form id="settings"><fieldset id="fields"><div class="grid">
+<label>监听 / 扫描目录<div class="folder"><input id="watchDir" required><button type="button" data-folder="watchDir">选择…</button></div></label>
+<label>目标归档目录<div class="folder"><input id="archiveDir" required><button type="button" data-folder="archiveDir">选择…</button></div></label>
+<label>监听时的命名规则<input id="renameTemplate" required><small>支持 {YYYY} {MM} {DD} {HH} {mm} {ss}</small></label>
+<label>监听时的目标格式<select id="format"><option value="webp">WebP</option><option value="jpg">JPG（白色背景）</option><option value="png">PNG</option><option value="original">保留原格式</option></select></label>
+<label>监听时的归档方式<select id="organizeBy"><option value="month">按月份</option><option value="type">按格式</option><option value="none">直接归档</option></select></label>
+<label>压缩质量（WebP / JPG）<input id="quality" type="number" min="1" max="100" required></label>
+</div><label>批量分类规则<textarea id="rules" rows="3"></textarea><small>每行：分类=关键词,关键词；按文件名首次匹配，未命中归入“其他”。</small></label>
+<button type="submit">保存设置</button></fieldset></form></section>
+<section class="card"><div class="section-title"><h2>批量整理</h2><button id="scan">扫描并预览</button></div><p>复制时保留原名与格式，按分类和月份归档。与监听模式分开运行。</p><div class="table-wrap"><table><thead><tr><th>预览</th><th>原文件名</th><th>计划归档路径</th></tr></thead><tbody id="entries"></tbody></table></div><p id="count">尚未扫描</p><button id="copy" class="primary" disabled>确认复制全部</button></section>
+<section class="card"><div class="section-title"><div><h2>实时监听</h2><p>仅处理启动后新增的截图，使用上方命名、格式和归档设置。</p></div><button id="watch">开始监听</button></div></section>
+<section class="card"><div class="section-title"><h2>活动日志</h2><span>最近 100 条 · 重启后清空</span></div><div id="logs" aria-live="polite"></div></section>
+<footer>SnapSort · 本地截图整理器</footer></main><dialog id="confirmation"><h2>确认复制</h2><p id="confirmationText"></p><p>原图全部保留，重名自动编号。</p><div class="section-title"><button id="cancelCopy">取消</button><button id="executeCopy" class="primary">开始复制</button></div></dialog></body></html>
