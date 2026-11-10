@@ -5,6 +5,7 @@
   "type": "module",
   "engines": { "node": ">=22.12" },
   "scripts": {
+    "sort": "node src/batch-cli.js",
     "start": "node src/cli.js",
     "test": "node --test"
   },

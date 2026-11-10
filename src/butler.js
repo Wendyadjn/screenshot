@@ -10,7 +10,7 @@ import { randomUUID } from 'node:crypto';
 const extensions = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 export function isScreenshot(file) {
   return extensions.has(path.extname(file).toLowerCase()) &&
-    /^(screen\s?shot|screenshot|截[图圖屏]|屏幕快照|螢幕快照)/i.test(path.basename(file));
+    /^(screen\s?shot|screenshot|截[图圖屏]|屏幕截图|螢幕截圖|屏幕快照|螢幕快照)/i.test(path.basename(file));
 }
 
 function expand(file) {

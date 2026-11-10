@@ -1,4 +1,29 @@
-# Mac Desktop Screenshot Butler — Step 1
+# SnapSort / Mac Desktop Screenshot Butler
+
+## 合并后的两种使用方式
+
+- `npm start`：原有新增截图监听，支持格式转换和自动归档，默认保留源文件。
+- `npm run sort`：SnapSort 批量整理。扫描已有截图，显示分类预览，输入 `COPY` 才复制。始终保留原图和文件名，不转换格式，不受 `keepOriginal: false` 影响。
+
+批量模式按“分类/YYYY-MM/原文件名”复制，文件名关键词首次匹配生效；无法匹配进入“其他”。优先使用文件名有效日期，否则使用修改时间。源目录和目标目录必须互不包含；修改过的源文件需要重新扫描。同名加编号，重复执行会产生额外副本。批量与监听不要同时处理同一目录。
+
+### 从空白终端测试批量模式
+
+逐行运行：
+
+```sh
+cd /Users/jianrunlu/Documents/ChatGPT/screenshot
+npm install
+npm test
+mkdir -p demo/Desktop demo/Archive
+node --input-type=module -e 'import fs from "node:fs"; const c=JSON.parse(fs.readFileSync("config.json","utf8")); c.watchDir=process.cwd()+"/demo/Desktop"; c.archiveDir=process.cwd()+"/demo/Archive"; fs.writeFileSync("demo/config.json", JSON.stringify(c,null,2));'
+node --input-type=module -e 'import sharp from "sharp"; await sharp({create:{width:64,height:64,channels:3,background:"blue"}}).png().toFile("demo/Desktop/Screenshot 2026-10-27 lecture.png");'
+npm run sort -- ./demo/config.json
+```
+
+预览中应显示 `学习/2026-10/Screenshot 2026-10-27 lecture.png`。先输入 `no` 回车取消，确认 Archive 中无新增图片。再次运行最后一条命令，输入大写 `COPY` 回车。Finder 中用 Command+Shift+G 打开 `/Users/jianrunlu/Documents/ChatGPT/screenshot/demo`，应看到源图仍在 Desktop，Archive/学习/2026-10 中有副本。重复执行会创建 ` (1)` 副本。
+
+可选自定义规则：创建 UTF-8 文本文件，每行例如 `学习=lecture,course,课程`，然后执行 `npm run sort -- ./demo/config.json ./rules.txt`。本版分类仅依据文件名，没有 OCR。Python/PySide6 界面未移植；下一步可在现有 Node 核心上加本地控制面板。
 
 本地 Node.js ESM 工具，只依赖 chokidar（文件监听）和 sharp（图片转换）。建议 Node.js 24 LTS；package.json 固定使用 chokidar 5 系列。后续面板使用 Node 内置 HTTP 服务、Server-Sent Events 和原生 HTML/CSS/JS 即可，目前不需要 React、Vite 或 Express。
 
@@ -14,7 +39,7 @@ npm install
 npm test
 ```
 
-测试应显示 `pass 3`、`fail 0`。如果提示找不到 node 或 npm，请先安装 Node.js（建议 24 LTS），重新打开终端后再执行这些命令。
+测试应显示 `pass 5`、`fail 0`。如果提示找不到 node 或 npm，请先安装 Node.js（建议 24 LTS），重新打开终端后再执行这些命令。
 
 第一次手动验证建议使用隔离目录，不操作真实桌面：
 
